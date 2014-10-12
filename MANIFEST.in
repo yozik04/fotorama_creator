@@ -1,0 +1,1 @@
+recursive-include fotorama_creator/data *.css *.js *.png *.html

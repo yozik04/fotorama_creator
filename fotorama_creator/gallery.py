@@ -4,9 +4,10 @@ import os, shutil
 import pkg_resources
 from string import Template
 from os.path import join as path_join, dirname
-from glob import glob
 from PIL import Image
 import cgi
+import fnmatch
+import re
 
 
 class Gallery:
@@ -89,11 +90,9 @@ class Gallery:
     if hasattr(self, 'images'):
       return
 
-    def either(c):
-        return '[%s%s]'%(c.lower(),c.upper()) if c.isalpha() else c
+    pattern = re.compile(fnmatch.translate('*.jpg'), re.IGNORECASE)
 
-    old_cwd = os.getcwd()
-    os.chdir(self.photo_path)
-    self.images = glob(''.join(map(either,'*.jpg')))
+    self.images = []
+    for root, dirs, files in os.walk(self.photo_path, topdown=True):
+      self.images += [os.path.relpath(path_join(root, j), self.photo_path) for j in files if pattern.match(j)]
 
-    os.chdir(old_cwd)
