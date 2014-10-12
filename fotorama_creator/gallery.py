@@ -45,6 +45,8 @@ class Gallery:
       os.mkdir(self.thumbs_path)
       print "Thumbnails folder created"
 
+    print "Creating thumbnails. Using %d processes" % cpu_count()
+
     pool = Pool(processes=cpu_count())
     pool.map(_create_thumbnail_parallel, map(lambda f: (path_join(self.photo_path, f), path_join(self.thumbs_path, f), self.thumb_size), self.images))
     pool.close()
