@@ -48,17 +48,12 @@ class Gallery:
       image = Image.open(path_join(self.photo_path, image_file))
       image.thumbnail(self.thumb_size, Image.ANTIALIAS)
 
-      thumb = Image.new('RGBA', self.thumb_size, (255, 255, 255, 0))
-      thumb.paste(
-          image,
-          ((self.thumb_size[0] - image.size[0]) / 2, (self.thumb_size[1] - image.size[1]) / 2))
-
       thumb_file = path_join(self.thumbs_path, image_file)
       dir = dirname(thumb_file)
       if not os.path.exists(dir):
         print "Creating dir:", dir
         os.makedirs(dir)
-      thumb.save(thumb_file, image.format)
+      image.save(thumb_file, image.format)
 
     print "Thumbnails created"
 
@@ -77,7 +72,8 @@ class Gallery:
 
     html = ''
     for image_file in self.images:
-      html += '<a href="%s"><img src="%s"></a>' % (cgi.escape('photos/' + image_file), cgi.escape('thumbs/' + image_file))
+      (width, height) = Image.open(path_join(self.thumbs_path, image_file)).size
+      html += '<a href="%s"><img src="%s" width="%d" height="%d"></a>' % (cgi.escape('photos/' + image_file), cgi.escape('thumbs/' + image_file), width, height)
 
     tpl = Template(open(pkg_resources.resource_filename(__name__, path_join("data", "template.html"))).read())
     content = tpl.substitute({"title": cgi.escape(self.title), "images": html})
