@@ -9,6 +9,7 @@ import cgi
 import fnmatch
 import re
 import time
+from multiprocessing import Pool, cpu_count
 
 
 class Gallery:
@@ -21,7 +22,6 @@ class Gallery:
     self.sorting = sort
     self.thumb_size = (180, 180)
     self._source_photo_path = photo_dir
-
 
   def create(self):
     if os.path.isfile(self.index_path):
@@ -45,17 +45,9 @@ class Gallery:
       os.mkdir(self.thumbs_path)
       print "Thumbnails folder created"
 
-    for image_file in self.images:
-      print "Creating thumbnail for:", image_file
-      with Image.open(path_join(self.photo_path, image_file)) as image:
-        image.thumbnail(self.thumb_size, Image.ANTIALIAS)
-
-        thumb_file = path_join(self.thumbs_path, image_file)
-        dir = dirname(thumb_file)
-        if not os.path.exists(dir):
-          print "Creating dir:", dir
-          os.makedirs(dir)
-        image.save(thumb_file, image.format)
+    pool = Pool(processes=cpu_count())
+    pool.map(_create_thumbnail_parallel, map(lambda f: (path_join(self.photo_path, f), path_join(self.thumbs_path, f), self.thumb_size), self.images))
+    pool.close()
 
     print "Thumbnails created"
 
@@ -96,16 +88,32 @@ class Gallery:
       images = [os.path.relpath(path_join(root, j), self.photo_path) for j in files if pattern.match(j)]
 
       if self.sorting == 'date':
-        images.sort(key=self._get_image_date)
+        images.sort(key=lambda i: _get_image_date(path_join(self.photo_path, i)))
       else:
         images.sort()
 
       self.images += images
 
-  def _get_image_date(self, file):
-    with Image.open(path_join(self.photo_path, file)) as image:
-      info = image._getexif()
-      if info:
-        return time.strptime(info.get(0x0132), '%Y:%m:%d %H:%M:%S')
-      else:
-        return time.gmtime(os.path.getctime(file))
+
+
+
+def _get_image_date(file):
+  with Image.open(file) as image:
+    info = image._getexif()
+    if info:
+      return time.strptime(info.get(0x0132), '%Y:%m:%d %H:%M:%S')
+    else:
+      return time.gmtime(os.path.getctime(file))
+
+def _create_thumbnail_parallel(input):
+  (image_file, thumb_file, thumb_size) = input
+
+  print "Creating thumbnail for:", image_file
+  with Image.open(image_file) as image:
+    image.thumbnail(thumb_size, Image.ANTIALIAS)
+
+    dir = dirname(thumb_file)
+    if not os.path.exists(dir):
+      print "Creating dir:", dir
+      os.makedirs(dir)
+    image.save(thumb_file, image.format)
