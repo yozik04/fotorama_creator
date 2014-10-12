@@ -89,8 +89,11 @@ class Gallery:
     if hasattr(self, 'images'):
       return
 
+    def either(c):
+        return '[%s%s]'%(c.lower(),c.upper()) if c.isalpha() else c
+
     old_cwd = os.getcwd()
     os.chdir(self.photo_path)
-    self.images = glob('*.jpg')
+    self.images = glob(''.join(map(either,'*.jpg')))
 
     os.chdir(old_cwd)
