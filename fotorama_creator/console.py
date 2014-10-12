@@ -32,6 +32,7 @@ def main():
   parser = argparse.ArgumentParser(description='Create photo gallery in current directory.', fromfile_prefix_chars="@")
   parser.add_argument('photo_dir', action=readable_dir, help="Source photo directory")
   parser.add_argument('-d', '--gallery_dir', action=writable_dir, default=os.getcwd(), help="Current working directory is used by default")
+  parser.add_argument('-t', '--title', type=str, default="My fotorama gallery", help="Gallery title to be used in index.html")
 
   try:
     args = parser.parse_args()

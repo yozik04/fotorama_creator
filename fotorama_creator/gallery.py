@@ -10,8 +10,9 @@ import cgi
 
 
 class Gallery:
-  def __init__(self, gallery_dir, photo_dir):
+  def __init__(self, gallery_dir, photo_dir, title):
     self.path = gallery_dir
+    self.title = title
     self.index_path = path_join(self.path, 'index.html')
     self.photo_path = path_join(self.path, 'photos')
     self.thumbs_path = path_join(self.path, 'thumbs')
@@ -78,7 +79,7 @@ class Gallery:
       html += '<a href="%s"><img src="%s"></a>' % (cgi.escape('photos/' + image_file), cgi.escape('thumbs/' + image_file))
 
     tpl = Template(open(pkg_resources.resource_filename(__name__, path_join("data", "template.html"))).read())
-    content = tpl.substitute({"images": html})
+    content = tpl.substitute({"title": cgi.escape(self.title), "images": html})
     open(self.index_path, 'w').write(content)
 
     print "Index created"
