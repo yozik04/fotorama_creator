@@ -8,15 +8,17 @@ from PIL import Image
 import cgi
 import fnmatch
 import re
+import time
 
 
 class Gallery:
-  def __init__(self, gallery_dir, photo_dir, title):
-    self.path = gallery_dir
+  def __init__(self, output_dir, photo_dir, title, sort):
+    self.path = output_dir
     self.title = title
     self.index_path = path_join(self.path, 'index.html')
     self.photo_path = path_join(self.path, 'photos')
     self.thumbs_path = path_join(self.path, 'thumbs')
+    self.sorting = sort
     self.thumb_size = (180, 180)
     self._source_photo_path = photo_dir
 
@@ -45,15 +47,15 @@ class Gallery:
 
     for image_file in self.images:
       print "Creating thumbnail for:", image_file
-      image = Image.open(path_join(self.photo_path, image_file))
-      image.thumbnail(self.thumb_size, Image.ANTIALIAS)
+      with Image.open(path_join(self.photo_path, image_file)) as image:
+        image.thumbnail(self.thumb_size, Image.ANTIALIAS)
 
-      thumb_file = path_join(self.thumbs_path, image_file)
-      dir = dirname(thumb_file)
-      if not os.path.exists(dir):
-        print "Creating dir:", dir
-        os.makedirs(dir)
-      image.save(thumb_file, image.format)
+        thumb_file = path_join(self.thumbs_path, image_file)
+        dir = dirname(thumb_file)
+        if not os.path.exists(dir):
+          print "Creating dir:", dir
+          os.makedirs(dir)
+        image.save(thumb_file, image.format)
 
     print "Thumbnails created"
 
@@ -72,8 +74,9 @@ class Gallery:
 
     html = ''
     for image_file in self.images:
-      (width, height) = Image.open(path_join(self.thumbs_path, image_file)).size
-      html += '<a href="%s"><img src="%s" width="%d" height="%d"></a>' % (cgi.escape('photos/' + image_file), cgi.escape('thumbs/' + image_file), width, height)
+      with Image.open(path_join(self.thumbs_path, image_file)) as image:
+        (width, height) = image.size
+        html += '<a href="%s"><img src="%s" width="%d" height="%d"></a>' % (cgi.escape('photos/' + image_file), cgi.escape('thumbs/' + image_file), width, height)
 
     tpl = Template(open(pkg_resources.resource_filename(__name__, path_join("data", "template.html"))).read())
     content = tpl.substitute({"title": cgi.escape(self.title), "images": html})
@@ -90,5 +93,19 @@ class Gallery:
 
     self.images = []
     for root, dirs, files in os.walk(self.photo_path, topdown=True):
-      self.images += [os.path.relpath(path_join(root, j), self.photo_path) for j in files if pattern.match(j)]
+      images = [os.path.relpath(path_join(root, j), self.photo_path) for j in files if pattern.match(j)]
 
+      if self.sorting == 'date':
+        images.sort(key=self._get_image_date)
+      else:
+        images.sort()
+
+      self.images += images
+
+  def _get_image_date(self, file):
+    with Image.open(path_join(self.photo_path, file)) as image:
+      info = image._getexif()
+      if info:
+        return time.strptime(info.get(0x0132), '%Y:%m:%d %H:%M:%S')
+      else:
+        return time.gmtime(os.path.getctime(file))
