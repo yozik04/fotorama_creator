@@ -12,18 +12,24 @@ import time
 from multiprocessing import Pool, cpu_count
 import ConfigParser
 
+INDEX_FILE = 'index.html'
+ORIGINAL_DIR = 'photos'
+OPTIMIZED_DIR = 'optimized'
+THUMBNAIL_DIR = 'thumbs'
 
 class Gallery:
   def __init__(self, output_dir, photo_dir, **kwargs):
     self.path = output_dir
     self._source_photo_path = photo_dir
-    self.index_path = path_join(self.path, 'index.html')
-    self.photo_path = path_join(self.path, 'photos')
-    self.thumbs_path = path_join(self.path, 'thumbs')
+    self.index_path = path_join(self.path, INDEX_FILE)
+    self.photo_path = path_join(self.path, ORIGINAL_DIR)
+    self.optimized_path = path_join(self.path, OPTIMIZED_DIR)
+    self.thumbs_path = path_join(self.path, THUMBNAIL_DIR)
 
     self.title = kwargs.get('title') or "My fotorama gallery"
     self.sorting = kwargs.get('sort')
     self.thumb_size = (180, 180)
+    self.optimized_size = (1350, 1350)
 
     self.picasa_star = kwargs.get('picasa_star')
 
@@ -52,7 +58,8 @@ class Gallery:
     print "Creating thumbnails. Using %d processes" % cpu_count()
 
     pool = Pool(processes=cpu_count())
-    pool.map(_create_thumbnail_parallel, map(lambda f: (path_join(self.photo_path, f), path_join(self.thumbs_path, f), self.thumb_size), self.images))
+    pool.map(_rotate_and_scale, map(lambda f: (path_join(self.photo_path, f), path_join(self.optimized_path, f), self.optimized_size), self.images))
+    pool.map(_rotate_and_scale, map(lambda f: (path_join(self.optimized_path, f), path_join(self.thumbs_path, f), self.thumb_size), self.images))
     pool.close()
 
     print "Thumbnails for %d images created" % len(self.images)
@@ -74,7 +81,7 @@ class Gallery:
     for image_file in self.images:
       with Image.open(path_join(self.thumbs_path, image_file)) as image:
         (width, height) = image.size
-        html += '<a href="%s"><img src="%s" width="%d" height="%d"></a>' % (cgi.escape('photos/' + image_file), cgi.escape('thumbs/' + image_file), width, height)
+        html += '<a href="%s"><img src="%s" data-full="%s" width="%d" height="%d"></a>' % (cgi.escape(OPTIMIZED_DIR + '/' + image_file), cgi.escape(THUMBNAIL_DIR + '/' + image_file), cgi.escape(ORIGINAL_DIR + '/' + image_file), width, height)
 
     tpl = Template(open(pkg_resources.resource_filename(__name__, path_join("data", "template.html"))).read())
     content = tpl.substitute({"title": cgi.escape(self.title), "images": html})
@@ -110,6 +117,7 @@ class Gallery:
 def _filter_picasa_starred(folder, images):
   ini = path_join(folder, '.picasa.ini')
   if not isfile(ini):
+    print '.picasa.ini not found in %s. Skipping...' % folder
     return []
 
   cfg = ConfigParser.ConfigParser()
@@ -128,15 +136,40 @@ def _get_image_date(file):
     else:
       return time.gmtime(os.path.getctime(file))
 
-def _create_thumbnail_parallel(input):
-  (image_file, thumb_file, thumb_size) = input
+def _rotate_and_scale(input):
+  (in_file, out_file, thumb_size) = input
 
-  print "Creating thumbnail for:", image_file
-  with Image.open(image_file) as image:
+  print "Auto rotating and scaling down to %s: %s -> %s" % (str(thumb_size), in_file, out_file)
+  with Image.open(in_file) as image:
     image.thumbnail(thumb_size, Image.ANTIALIAS)
+    image = _autorotate(image)
 
-    dir = dirname(thumb_file)
+    dir = dirname(out_file)
     if not os.path.exists(dir):
-      print "Creating dir:", dir
+      print "Creating directory:", dir
       os.makedirs(dir)
-    image.save(thumb_file, image.format)
+    image.save(out_file, image.format)
+
+def _autorotate(image):
+  exif = image._getexif()
+  if exif:
+    orientation_key = 274 # cf ExifTags
+    if orientation_key in exif:
+      orientation = exif[orientation_key]
+
+      if orientation == 2:
+        return image.transpose(Image.FLIP_LEFT_RIGHT)
+      elif orientation == 3:
+        return image.transpose(Image.ROTATE_180)
+      elif orientation == 4:
+        return image.transpose(Image.FLIP_TOP_BOTTOM)
+      elif orientation == 5:
+        return image.transpose(Image.FLIP_TOP_BOTTOM).transpose(Image.ROTATE_90)
+      elif orientation == 6:
+        return image.transpose(Image.ROTATE_270)
+      elif orientation == 7:
+        return image.transpose(Image.FLIP_TOP_BOTTOM).transpose(Image.ROTATE_270)
+      elif orientation == 8:
+        return image.transpose(Image.ROTATE_90)
+
+  return image
