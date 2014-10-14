@@ -7,9 +7,9 @@ Creates thumbnails and scaled down images for optimal web performance.
 
 Script uses all cpu threads available to scale images down with ultimate performance.
 
-Additionally:
+Additionally supports:
 
-* Supports importing only Google's Picasa starred images.
+* Importing only Google's Picasa starred images.
 * Sorting by date and file name (date is by default)
 
 Installation
@@ -68,3 +68,11 @@ After processing your folder will look like:
         
 index.html was generated for your image gallery.
 Open it in a browser to see your gallery locally.
+
+Your source images folder is left untouched!
+
+TODO
+=====
+* Create map links if images have coordinates.
+* Enable original image download.
+* Import image titles from Google Picasa.
