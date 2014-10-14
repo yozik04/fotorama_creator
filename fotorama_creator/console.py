@@ -34,6 +34,8 @@ def main():
   parser.add_argument('-o', '--output_dir', action=writable_dir, default=os.getcwd(), help="Current working directory is used by default")
   parser.add_argument('-t', '--title', type=str, default="My fotorama gallery", help="Gallery title to be used in index.html")
   parser.add_argument('-s', '--sort', type=str, default="date", choices=['date', 'name'], help="Sort pictures by")
+  parser.add_argument('-ps', '--picasa_star', action='store_true', help="Only Picasa starred photos")
+  #parser.add_argument('-pt', '--picasa_title', action='store_true', help="Import Picasa comments")
 
   try:
     args = parser.parse_args()
