@@ -29,9 +29,10 @@ Example:
 
 All available options:
 
-    usage: fotorama_create [-h] [-o OUTPUT_DIR] [-t TITLE] [-s {date,name}] [-ps]
-                       photo_dir
-
+    usage: fotorama_create [-h] [-o OUTPUT_DIR] [-t TITLE] [-s {date,name}] [-sg]
+                           [-ps] [-ft]
+                           photo_dir
+    
     Create photo gallery in current directory.
     
     positional arguments:
@@ -44,8 +45,12 @@ All available options:
       -t TITLE, --title TITLE
                             Gallery title to be used in index.html
       -s {date,name}, --sort {date,name}
-                            Sort pictures by
+                            Sort pictures by. Default is date
+      -sg, --sort_global    Use global sort. Useful when you have multiple folders
+                            of the same event
       -ps, --picasa_star    Only Picasa starred photos
+      -ft, --force_thumbnails
+                            Force recreate thumbnails
       
 Results
 ========

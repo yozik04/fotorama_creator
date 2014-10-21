@@ -28,6 +28,8 @@ class Gallery:
 
     self.title = kwargs.get('title') or "My fotorama gallery"
     self.sorting = kwargs.get('sort')
+    self.sorting_global = kwargs.get('sort_global')
+    self.force_thumbnails = kwargs.get('force_thumbnails')
     self.thumb_size = (180, 180)
     self.optimized_size = (1350, 1350)
 
@@ -58,8 +60,8 @@ class Gallery:
     print "Creating thumbnails. Using %d processes" % cpu_count()
 
     pool = Pool(processes=cpu_count())
-    pool.map(_rotate_and_scale, map(lambda f: (path_join(self.photo_path, f), path_join(self.optimized_path, f), self.optimized_size), self.images))
-    pool.map(_rotate_and_scale, map(lambda f: (path_join(self.optimized_path, f), path_join(self.thumbs_path, f), self.thumb_size), self.images))
+    pool.map(_rotate_and_scale, map(lambda f: (path_join(self.photo_path, f), path_join(self.optimized_path, f), self.optimized_size, self.force_thumbnails), self.images))
+    pool.map(_rotate_and_scale, map(lambda f: (path_join(self.optimized_path, f), path_join(self.thumbs_path, f), self.thumb_size, self.force_thumbnails), self.images))
     pool.close()
 
     print "Thumbnails for %d images created" % len(self.images)
@@ -97,6 +99,11 @@ class Gallery:
     if self.picasa_star:
       print "Creating gallery only from Picasa starred photos"
 
+    if self.sorting_global:
+      print "Using global sort by %s" % self.sorting
+    else:
+      print "Using folder sort by %s" % self.sorting
+
     pattern = re.compile(fnmatch.translate('*.jpg'), re.IGNORECASE)
 
     self.images = []
@@ -106,13 +113,19 @@ class Gallery:
       if self.picasa_star:
         images = _filter_picasa_starred(root, images)
 
-      if self.sorting == 'date':
-        images.sort(key=lambda i: _get_image_date(path_join(self.photo_path, i)))
-      else:
-        images.sort()
+      if not self.sorting_global:
+        self._sort(images)
 
       self.images += images
 
+    if self.sorting_global:
+      self._sort(self.images)
+
+  def _sort(self, images):
+    if self.sorting == 'date':
+      images.sort(key=lambda i: _get_image_date(path_join(self.photo_path, i)))
+    else:
+      images.sort()
 
 def _filter_picasa_starred(folder, images):
   ini = path_join(folder, '.picasa.ini')
@@ -131,13 +144,16 @@ def _filter_picasa_starred(folder, images):
 def _get_image_date(file):
   with Image.open(file) as image:
     info = image._getexif()
-    if info and 0x0132 in info:
-      return time.strptime(info.get(0x0132), '%Y:%m:%d %H:%M:%S')
+    if info and 36867 in info:
+      return time.strptime(info.get(36867), '%Y:%m:%d %H:%M:%S')
     else:
       return time.gmtime(os.path.getctime(file))
 
 def _rotate_and_scale(input):
-  (in_file, out_file, thumb_size) = input
+  (in_file, out_file, thumb_size, force) = input
+  if not force and os.path.isfile(out_file):
+    print "Outfile already exists %s. Skipping..." % (out_file)
+    return
 
   print "Auto rotating and scaling down to %s: %s -> %s" % (str(thumb_size), in_file, out_file)
   with Image.open(in_file) as image:
