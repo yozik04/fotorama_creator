@@ -104,7 +104,7 @@ class Gallery:
     else:
       print "Using folder sort by %s" % self.sorting
 
-    pattern = re.compile(fnmatch.translate('*.jpg'), re.IGNORECASE)
+    pattern = re.compile('.*\.(jpg|jpeg)$', re.IGNORECASE)
 
     self.images = []
     for root, dirs, files in os.walk(self.photo_path, topdown=True):
